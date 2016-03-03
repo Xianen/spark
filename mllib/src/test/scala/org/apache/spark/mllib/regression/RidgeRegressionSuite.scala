@@ -23,7 +23,7 @@ import org.jblas.DoubleMatrix
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.util.{LocalClusterSparkContext, LinearDataGenerator,
+import org.apache.spark.mllib.util.{LinearDataGenerator, LocalClusterSparkContext,
   MLlibTestSparkContext}
 import org.apache.spark.util.Utils
 
@@ -38,7 +38,7 @@ class RidgeRegressionSuite extends SparkFunSuite with MLlibTestSparkContext {
   def predictionError(predictions: Seq[Double], input: Seq[LabeledPoint]): Double = {
     predictions.zip(input).map { case (prediction, expected) =>
       (prediction - expected.label) * (prediction - expected.label)
-    }.reduceLeft(_ + _) / predictions.size
+    }.sum / predictions.size
   }
 
   test("ridge regression can help avoid overfitting") {

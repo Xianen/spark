@@ -95,7 +95,9 @@ private[spark] class RBackend {
 private[spark] object RBackend extends Logging {
   def main(args: Array[String]): Unit = {
     if (args.length < 1) {
+      // scalastyle:off println
       System.err.println("Usage: RBackend <tempFilePath>")
+      // scalastyle:on println
       System.exit(-1)
     }
     val sparkRBackend = new RBackend()
@@ -111,6 +113,7 @@ private[spark] object RBackend extends Logging {
       val dos = new DataOutputStream(new FileOutputStream(f))
       dos.writeInt(boundPort)
       dos.writeInt(listenPort)
+      SerDe.writeString(dos, RUtils.rPackages.getOrElse(""))
       dos.close()
       f.renameTo(new File(path))
 

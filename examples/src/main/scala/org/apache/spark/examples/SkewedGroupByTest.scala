@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
+// scalastyle:off println
 package org.apache.spark.examples
 
 import java.util.Random
 
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.SparkContext._
 
 /**
   * Usage: GroupByTest [numMappers] [numKVPairs] [KeySize] [numReducers]
@@ -57,3 +57,4 @@ object SkewedGroupByTest {
     sc.stop()
   }
 }
+// scalastyle:on println

@@ -28,7 +28,7 @@ import static org.apache.spark.launcher.CommandBuilderUtils.*;
 
 /**
  * Command builder for internal Spark classes.
- * <p/>
+ * <p>
  * This class handles building the command to launch all internal Spark classes except for
  * SparkSubmit (which is handled by {@link SparkSubmitCommandBuilder} class.
  */
@@ -48,8 +48,8 @@ class SparkClassCommandBuilder extends AbstractCommandBuilder {
     String memKey = null;
     String extraClassPath = null;
 
-    // Master, Worker, and HistoryServer use SPARK_DAEMON_JAVA_OPTS (and specific opts) +
-    // SPARK_DAEMON_MEMORY.
+    // Master, Worker, HistoryServer, ExternalShuffleService, MesosClusterDispatcher use
+    // SPARK_DAEMON_JAVA_OPTS (and specific opts) + SPARK_DAEMON_MEMORY.
     if (className.equals("org.apache.spark.deploy.master.Master")) {
       javaOptsKeys.add("SPARK_DAEMON_JAVA_OPTS");
       javaOptsKeys.add("SPARK_MASTER_OPTS");
@@ -69,7 +69,10 @@ class SparkClassCommandBuilder extends AbstractCommandBuilder {
     } else if (className.equals("org.apache.spark.executor.MesosExecutorBackend")) {
       javaOptsKeys.add("SPARK_EXECUTOR_OPTS");
       memKey = "SPARK_EXECUTOR_MEMORY";
-    } else if (className.equals("org.apache.spark.deploy.ExternalShuffleService")) {
+    } else if (className.equals("org.apache.spark.deploy.mesos.MesosClusterDispatcher")) {
+      javaOptsKeys.add("SPARK_DAEMON_JAVA_OPTS");
+    } else if (className.equals("org.apache.spark.deploy.ExternalShuffleService") ||
+        className.equals("org.apache.spark.deploy.mesos.MesosExternalShuffleService")) {
       javaOptsKeys.add("SPARK_DAEMON_JAVA_OPTS");
       javaOptsKeys.add("SPARK_SHUFFLE_OPTS");
       memKey = "SPARK_DAEMON_MEMORY";

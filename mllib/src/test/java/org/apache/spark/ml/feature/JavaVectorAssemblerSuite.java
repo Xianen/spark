@@ -24,7 +24,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.mllib.linalg.Vector;
 import org.apache.spark.mllib.linalg.VectorUDT;
@@ -65,8 +64,7 @@ public class JavaVectorAssemblerSuite {
     Row row = RowFactory.create(
       0, 0.0, Vectors.dense(1.0, 2.0), "a",
       Vectors.sparse(2, new int[] {1}, new double[] {3.0}), 10L);
-    JavaRDD<Row> rdd = jsc.parallelize(Arrays.asList(row));
-    DataFrame dataset = sqlContext.createDataFrame(rdd, schema);
+    DataFrame dataset = sqlContext.createDataFrame(Arrays.asList(row), schema);
     VectorAssembler assembler = new VectorAssembler()
       .setInputCols(new String[] {"x", "y", "z", "n"})
       .setOutputCol("features");

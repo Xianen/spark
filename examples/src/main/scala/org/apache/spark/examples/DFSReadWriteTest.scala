@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
+// scalastyle:off println
 package org.apache.spark.examples
 
 import java.io.File
 
 import scala.io.Source._
 
-import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.SparkContext._
+import org.apache.spark.{SparkConf, SparkContext}
 
 /**
   * Simple test for reading and writing to a distributed
@@ -87,7 +87,7 @@ object DFSReadWriteTest {
   def runLocalWordCount(fileContents: List[String]): Int = {
     fileContents.flatMap(_.split(" "))
       .flatMap(_.split("\t"))
-      .filter(_.size > 0)
+      .filter(_.nonEmpty)
       .groupBy(w => w)
       .mapValues(_.size)
       .values
@@ -118,7 +118,7 @@ object DFSReadWriteTest {
     val dfsWordCount = readFileRDD
       .flatMap(_.split(" "))
       .flatMap(_.split("\t"))
-      .filter(_.size > 0)
+      .filter(_.nonEmpty)
       .map(w => (w, 1))
       .countByKey()
       .values
@@ -136,3 +136,4 @@ object DFSReadWriteTest {
 
   }
 }
+// scalastyle:on println

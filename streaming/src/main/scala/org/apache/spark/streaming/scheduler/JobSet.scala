@@ -28,7 +28,7 @@ private[streaming]
 case class JobSet(
     time: Time,
     jobs: Seq[Job],
-    streamIdToNumRecords: Map[Int, Long] = Map.empty) {
+    streamIdToInputInfo: Map[Int, StreamInputInfo] = Map.empty) {
 
   private val incompleteJobs = new HashSet[Job]()
   private val submissionTime = System.currentTimeMillis() // when this jobset was submitted
@@ -57,17 +57,16 @@ case class JobSet(
 
   // Time taken to process all the jobs from the time they were submitted
   // (i.e. including the time they wait in the streaming scheduler queue)
-  def totalDelay: Long = {
-    processingEndTime - time.milliseconds
-  }
+  def totalDelay: Long = processingEndTime - time.milliseconds
 
   def toBatchInfo: BatchInfo = {
-    new BatchInfo(
+    BatchInfo(
       time,
-      streamIdToNumRecords,
+      streamIdToInputInfo,
       submissionTime,
-      if (processingStartTime >= 0 ) Some(processingStartTime) else None,
-      if (processingEndTime >= 0 ) Some(processingEndTime) else None
+      if (hasStarted) Some(processingStartTime) else None,
+      if (hasCompleted) Some(processingEndTime) else None,
+      jobs.map { job => (job.outputOpId, job.toOutputOperationInfo) }.toMap
     )
   }
 }

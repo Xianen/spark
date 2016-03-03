@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
+// scalastyle:off println
 package org.apache.spark.examples.streaming
 
 import com.twitter.algebird._
 import com.twitter.algebird.CMSHasherImplicits._
 
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.twitter._
@@ -113,3 +113,4 @@ object TwitterAlgebirdCMS {
     ssc.awaitTermination()
   }
 }
+// scalastyle:on println

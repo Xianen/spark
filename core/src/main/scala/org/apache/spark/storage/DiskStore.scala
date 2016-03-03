@@ -17,12 +17,11 @@
 
 package org.apache.spark.storage
 
-import java.io.{IOException, File, FileOutputStream, RandomAccessFile}
+import java.io.{File, FileOutputStream, IOException, RandomAccessFile}
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel.MapMode
 
 import org.apache.spark.Logging
-import org.apache.spark.serializer.Serializer
 import org.apache.spark.util.Utils
 
 /**
@@ -58,14 +57,6 @@ private[spark] class DiskStore(blockManager: BlockManager, diskManager: DiskBloc
     PutResult(bytes.limit(), Right(bytes.duplicate()))
   }
 
-  override def putArray(
-      blockId: BlockId,
-      values: Array[Any],
-      level: StorageLevel,
-      returnValues: Boolean): PutResult = {
-    putIterator(blockId, values.toIterator, level, returnValues)
-  }
-
   override def putIterator(
       blockId: BlockId,
       values: Iterator[Any],
@@ -86,7 +77,9 @@ private[spark] class DiskStore(blockManager: BlockManager, diskManager: DiskBloc
     } catch {
       case e: Throwable =>
         if (file.exists()) {
-          file.delete()
+          if (!file.delete()) {
+            logWarning(s"Error deleting ${file}")
+          }
         }
         throw e
     }
@@ -142,23 +135,14 @@ private[spark] class DiskStore(blockManager: BlockManager, diskManager: DiskBloc
     getBytes(blockId).map(buffer => blockManager.dataDeserialize(blockId, buffer))
   }
 
-  /**
-   * A version of getValues that allows a custom serializer. This is used as part of the
-   * shuffle short-circuit code.
-   */
-  def getValues(blockId: BlockId, serializer: Serializer): Option[Iterator[Any]] = {
-    // TODO: Should bypass getBytes and use a stream based implementation, so that
-    // we won't use a lot of memory during e.g. external sort merge.
-    getBytes(blockId).map(bytes => blockManager.dataDeserialize(blockId, bytes, serializer))
-  }
-
   override def remove(blockId: BlockId): Boolean = {
     val file = diskManager.getFile(blockId.name)
-    // If consolidation mode is used With HashShuffleMananger, the physical filename for the block
-    // is different from blockId.name. So the file returns here will not be exist, thus we avoid to
-    // delete the whole consolidated file by mistake.
     if (file.exists()) {
-      file.delete()
+      val ret = file.delete()
+      if (!ret) {
+        logWarning(s"Error deleting ${file.getPath()}")
+      }
+      ret
     } else {
       false
     }

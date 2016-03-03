@@ -19,7 +19,7 @@ package org.apache.spark.ui.exec
 
 import scala.collection.mutable.HashMap
 
-import org.apache.spark.{ExceptionFailure, SparkContext}
+import org.apache.spark.{ExceptionFailure, Resubmitted, SparkConf, SparkContext}
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.scheduler._
 import org.apache.spark.storage.{StorageStatus, StorageStatusListener}
@@ -43,11 +43,15 @@ private[ui] class ExecutorsTab(parent: SparkUI) extends SparkUITab(parent, "exec
  * A SparkListener that prepares information to be displayed on the ExecutorsTab
  */
 @DeveloperApi
-class ExecutorsListener(storageStatusListener: StorageStatusListener) extends SparkListener {
+class ExecutorsListener(storageStatusListener: StorageStatusListener, conf: SparkConf)
+    extends SparkListener {
+  val executorToTotalCores = HashMap[String, Int]()
+  val executorToTasksMax = HashMap[String, Int]()
   val executorToTasksActive = HashMap[String, Int]()
   val executorToTasksComplete = HashMap[String, Int]()
   val executorToTasksFailed = HashMap[String, Int]()
   val executorToDuration = HashMap[String, Long]()
+  val executorToJvmGCTime = HashMap[String, Long]()
   val executorToInputBytes = HashMap[String, Long]()
   val executorToInputRecords = HashMap[String, Long]()
   val executorToOutputBytes = HashMap[String, Long]()
@@ -57,11 +61,15 @@ class ExecutorsListener(storageStatusListener: StorageStatusListener) extends Sp
   val executorToLogUrls = HashMap[String, Map[String, String]]()
   val executorIdToData = HashMap[String, ExecutorUIData]()
 
-  def storageStatusList: Seq[StorageStatus] = storageStatusListener.storageStatusList
+  def activeStorageStatusList: Seq[StorageStatus] = storageStatusListener.storageStatusList
+
+  def deadStorageStatusList: Seq[StorageStatus] = storageStatusListener.deadStorageStatusList
 
   override def onExecutorAdded(executorAdded: SparkListenerExecutorAdded): Unit = synchronized {
     val eid = executorAdded.executorId
     executorToLogUrls(eid) = executorAdded.executorInfo.logUrlMap
+    executorToTotalCores(eid) = executorAdded.executorInfo.totalCores
+    executorToTasksMax(eid) = executorToTotalCores(eid) / conf.getInt("spark.task.cpus", 1)
     executorIdToData(eid) = ExecutorUIData(executorAdded.time)
   }
 
@@ -75,7 +83,7 @@ class ExecutorsListener(storageStatusListener: StorageStatusListener) extends Sp
 
   override def onApplicationStart(applicationStart: SparkListenerApplicationStart): Unit = {
     applicationStart.driverLogs.foreach { logs =>
-      val storageStatus = storageStatusList.find { s =>
+      val storageStatus = activeStorageStatusList.find { s =>
         s.blockManagerId.executorId == SparkContext.LEGACY_DRIVER_IDENTIFIER ||
         s.blockManagerId.executorId == SparkContext.DRIVER_IDENTIFIER
       }
@@ -92,14 +100,21 @@ class ExecutorsListener(storageStatusListener: StorageStatusListener) extends Sp
     val info = taskEnd.taskInfo
     if (info != null) {
       val eid = info.executorId
-      executorToTasksActive(eid) = executorToTasksActive.getOrElse(eid, 1) - 1
-      executorToDuration(eid) = executorToDuration.getOrElse(eid, 0L) + info.duration
       taskEnd.reason match {
+        case Resubmitted =>
+          // Note: For resubmitted tasks, we continue to use the metrics that belong to the
+          // first attempt of this task. This may not be 100% accurate because the first attempt
+          // could have failed half-way through. The correct fix would be to keep track of the
+          // metrics added by each attempt, but this is much more complicated.
+          return
         case e: ExceptionFailure =>
           executorToTasksFailed(eid) = executorToTasksFailed.getOrElse(eid, 0) + 1
         case _ =>
           executorToTasksComplete(eid) = executorToTasksComplete.getOrElse(eid, 0) + 1
       }
+
+      executorToTasksActive(eid) = executorToTasksActive.getOrElse(eid, 1) - 1
+      executorToDuration(eid) = executorToDuration.getOrElse(eid, 0L) + info.duration
 
       // Update shuffle read/write
       val metrics = taskEnd.taskMetrics
@@ -122,8 +137,9 @@ class ExecutorsListener(storageStatusListener: StorageStatusListener) extends Sp
         }
         metrics.shuffleWriteMetrics.foreach { shuffleWrite =>
           executorToShuffleWrite(eid) =
-            executorToShuffleWrite.getOrElse(eid, 0L) + shuffleWrite.shuffleBytesWritten
+            executorToShuffleWrite.getOrElse(eid, 0L) + shuffleWrite.bytesWritten
         }
+        executorToJvmGCTime(eid) = executorToJvmGCTime.getOrElse(eid, 0L) + metrics.jvmGCTime
       }
     }
   }

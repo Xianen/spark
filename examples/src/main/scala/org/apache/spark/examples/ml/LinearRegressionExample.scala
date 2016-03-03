@@ -15,17 +15,16 @@
  * limitations under the License.
  */
 
+// scalastyle:off println
 package org.apache.spark.examples.ml
 
-import scala.collection.mutable
 import scala.language.reflectiveCalls
 
 import scopt.OptionParser
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.examples.mllib.AbstractParams
-import org.apache.spark.ml.{Pipeline, PipelineStage}
-import org.apache.spark.ml.regression.{LinearRegression, LinearRegressionModel}
+import org.apache.spark.ml.regression.LinearRegression
 import org.apache.spark.sql.DataFrame
 
 /**
@@ -130,7 +129,7 @@ object LinearRegressionExample {
     println(s"Training time: $elapsedTime seconds")
 
     // Print the weights and intercept for linear regression.
-    println(s"Weights: ${lirModel.weights} Intercept: ${lirModel.intercept}")
+    println(s"Weights: ${lirModel.coefficients} Intercept: ${lirModel.intercept}")
 
     println("Training data results:")
     DecisionTreeExample.evaluateRegressionModel(lirModel, training, "label")
@@ -140,3 +139,4 @@ object LinearRegressionExample {
     sc.stop()
   }
 }
+// scalastyle:on println
